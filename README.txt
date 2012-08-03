@@ -1,12 +1,11 @@
-GDB Imshow
+GDB OpenCV imshow
 
 This is a simple python extension script to visualize interactively OpenCV
 images while debugging with gdb.
 
 INSTALL
 
- You need to have gdb (version 7.2 or newer). Install it from here:
- http://www.gnu.org/s/gdb/download/
+ You need to have gdb (version 7.2 or newer).
 
  You can try to use the cv_imshow command by sourcing it first from within a gdb
  session with the command
@@ -20,14 +19,9 @@ INSTALL
 USAGE
 
  Usage is extremely simple, once you have sourced the file. If the variable you
- want to inspect (i.e., show) is a cv::Mat with name 'image', all you need to do
- is
+ want to inspect (i.e., show) is a cv::Mat or an IplImage with name 'image', all
+ you need to do is
 
  > cv_imshow image
 
  from within your gdb session.
-
-FEEDBACK
-
- If you have any comments and/or suggestions, please send an email to
- stefpell@ee.ethz.ch
