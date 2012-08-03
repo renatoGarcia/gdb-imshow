@@ -5,108 +5,110 @@ import struct
 def chunker(seq, size):
     return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
 
-class cv_imshow (gdb.Command):
+class cv_imshow(gdb.Command):
     """Diplays the content of an opencv image"""
 
-    def __init__ (self):
-        super (cv_imshow, self).__init__ ("cv_imshow",
-                                          gdb.COMMAND_SUPPORT,
-                                          gdb.COMPLETE_FILENAME)
+    def __init__(self):
+        super(cv_imshow, self).__init__('cv_imshow',
+                                        gdb.COMMAND_SUPPORT,
+                                        gdb.COMPLETE_FILENAME)
 
     def invoke (self, arg, from_tty):
         # Access the variable from gdb.
         frame = gdb.selected_frame()
         val = frame.read_var(arg)
         if str(val.type.strip_typedefs()) == 'IplImage *':
-            self.iplimage(val)
+            img_info = self.get_iplimage_info(val)
         else:
-            self.cvmat(val)
+            img_info = self.get_cvmat_info(val)
 
-    def cvmat(self, val):
+        if img_info: self.show_image(*img_info)
+
+    @staticmethod
+    def get_cvmat_info(val):
         flags = val['flags']
-        cv_type = flags & 7
+        depth = flags & 7
         channels = 1 + (flags >> 3) & 63;
-        if cv_type == 0:
-            cv_type_name = "CV_8U"
-            cv_data_symbol = "B"
-        elif cv_type == 1:
-            cv_type_name = "CV_8S"
-            cv_data_symbol = "b"
-        elif cv_type == 2:
-            cv_type_name = "CV_16U"
-            cv_data_symbol = "H"
-        elif cv_type == 3:
-            cv_type_name = "CV_16S"
-            cv_data_symbol = "h"
-        elif cv_type == 4:
-            cv_type_name = "CV_32S"
-            cv_data_symbol = "i"
-        elif cv_type == 5:
-            cv_type_name = "CV_32F"
-            cv_data_symbol = "f"
-        elif cv_type == 6:
-            cv_type_name = "CV_64F"
-            cv_data_symbol = "d"
+        if depth == 0:
+            cv_type_name = 'CV_8U'
+            data_symbol = 'B'
+        elif depth == 1:
+            cv_type_name = 'CV_8S'
+            data_symbol = 'b'
+        elif depth == 2:
+            cv_type_name = 'CV_16U'
+            data_symbol = 'H'
+        elif depth == 3:
+            cv_type_name = 'CV_16S'
+            data_symbol = 'h'
+        elif depth == 4:
+            cv_type_name = 'CV_32S'
+            data_symbol = 'i'
+        elif depth == 5:
+            cv_type_name = 'CV_32F'
+            data_symbol = 'f'
+        elif depth == 6:
+            cv_type_name = 'CV_64F'
+            data_symbol = 'd'
         else:
-            print "Sorry but the type CV_USRTYPE1 is not supported"
+            gdb.write('Unsupported cv::Mat depth\n', gdb.STDERR)
             return
+
         rows = val['rows']
         cols = val['cols']
 
         line_step = val['step']['p'][0]
 
-        # Print information about image.
-        print "Image details: " + cv_type_name + " with # channels " + \
-            str(channels) + ", rows: " + str(rows) + " cols: " + str(cols)
+        gdb.write(cv_type_name + ' with ' + str(channels) + ' channels, ' +
+                  str(rows) + ' rows and ' +  str(cols) +' cols\n')
 
         data_address = unicode(val['data']).encode('utf-8').split()[0]
         data_address = int(data_address, 16)
 
-        self.build(cols, rows, channels, line_step, data_address, cv_data_symbol)
+        return (cols, rows, channels, line_step, data_address, data_symbol)
 
-
-    def iplimage(self, val):
+    @staticmethod
+    def get_iplimage_info(val):
         depth = val['depth']
         channels = val['nChannels']
         if depth == 0x8:
-            cv_type_name = "IPL_DEPTH_8U"
-            cv_data_symbol = "B"
+            cv_type_name = 'IPL_DEPTH_8U'
+            data_symbol = 'B'
             elem_size = 1
         elif depth == -0x7FFFFFF8:
-            cv_type_name = "IPL_DEPTH_8S"
-            cv_data_symbol = "b"
+            cv_type_name = 'IPL_DEPTH_8S'
+            data_symbol = 'b'
             elem_size = 1
         elif depth == 0x10:
-            cv_type_name = "IPL_DEPTH_16U"
-            cv_data_symbol = "H"
+            cv_type_name = 'IPL_DEPTH_16U'
+            data_symbol = 'H'
             elem_size = 2
         elif depth == -0x7FFFFFF0:
-            cv_type_name = "IPL_DEPTH_16S"
-            cv_data_symbol = "h"
+            cv_type_name = 'IPL_DEPTH_16S'
+            data_symbol = 'h'
             elem_size = 2
         elif depth == -0x7FFFFFE0:
-            cv_type_name = "IPL_DEPTH_32S"
-            cv_data_symbol = "i"
+            cv_type_name = 'IPL_DEPTH_32S'
+            data_symbol = 'i'
             elem_size = 4
         elif depth == 0x20:
-            cv_type_name = "IPL_DEPTH_32F"
-            cv_data_symbol = "f"
+            cv_type_name = 'IPL_DEPTH_32F'
+            data_symbol = 'f'
             elem_size = 4
         elif depth == 0x40:
-            cv_type_name = "IPL_DEPTH_64F"
-            cv_data_symbol = "d"
+            cv_type_name = 'IPL_DEPTH_64F'
+            data_symbol = 'd'
             elem_size = 8
         else:
-            print "Sorry but the type CV_USRTYPE1 is not supported"
+            gdb.write('Unsupported IplImage depth\n', gdb.STDERR)
             return
 
         rows = val['height'] if str(val['roi']) == '0x0' else val['roi']['height']
         cols = val['width'] if str(val['roi']) == '0x0' else val['roi']['width']
         line_step = val['widthStep']
 
-        # Print information about image.
-        print 'Image details: ' + cv_type_name + ' with ' + str(channels) +\
-          ' channels, rows: ' + str(rows) + " cols: " + str(cols)
+        gdb.write(cv_type_name + ' with ' + str(channels) + ' channels, ' +
+                  str(rows) + ' rows and ' +  str(cols) +' cols\n')
 
         data_address = unicode(val['imageData']).encode('utf-8').split()[0]
         data_address = int(data_address, 16)
@@ -115,10 +117,11 @@ class cv_imshow (gdb.Command):
             y_offset = int(val['roi']['yOffset'])
             data_address += line_step * y_offset + x_offset * elem_size * channels
 
-        self.build(cols, rows, channels, line_step, data_address, cv_data_symbol)
+        return (cols, rows, channels, line_step, data_address, data_symbol)
 
 
-    def build(self, width, height, n_channel, line_step, data_address, data_type):
+    @staticmethod
+    def show_image(width, height, n_channel, line_step, data_address, data_symbol):
         """ Copies the image data to a PIL image and shows it.
 
         Args:
@@ -128,7 +131,7 @@ class cv_imshow (gdb.Command):
             line_step: The offset to change to pixel (i+1, j) being
                 in pixel (i, j), in bytes.
             data_address: The address of image data in memory.
-            data_type: Python struct module code to the image data type.
+            data_symbol: Python struct module code to the image data type.
         """
         width = int(width)
         height = int(height)
@@ -141,39 +144,42 @@ class cv_imshow (gdb.Command):
 
         # Calculate the memory padding to change to the next image line.
         # Either due to memory alignment or a ROI.
-        if data_type in ('b', 'B'):
+        if data_symbol in ('b', 'B'):
             elem_size = 1
-        elif data_type in ('h', 'H'):
+        elif data_symbol in ('h', 'H'):
             elem_size = 2
-        elif data_type in ('i', 'f'):
+        elif data_symbol in ('i', 'f'):
             elem_size = 4
-        elif data_type == 'd':
+        elif data_symbol == 'd':
             elem_size = 8
         padding = line_step - width * n_channel * elem_size
 
         # Format memory data to load into the image.
         image_data = []
         if n_channel == 1:
-            mode = "L"
-            fmt = "%d%s%dx" % (width, data_type, padding)
+            mode = 'L'
+            fmt = '%d%s%dx' % (width, data_symbol, padding)
             for line in chunker(memory_data, line_step):
                 image_data.extend(struct.unpack(fmt, line))
         elif n_channel == 3:
-            mode = "RGB"
-            fmt = "%d%s%dx" % (width * 3, data_type, padding)
+            mode = 'RGB'
+            fmt = '%d%s%dx' % (width * 3, data_symbol, padding)
             for line in chunker(memory_data, line_step):
                 image_data.extend(struct.unpack(fmt, line))
+        else:
+            gdb.write('Only 1 or 3 channels supported\n', gdb.STDERR)
+            return
 
         # Fit the opencv elemente data in the PIL element data
-        if data_type == 'b':
+        if data_symbol == 'b':
             image_data = [i+128 for i in image_data]
-        elif data_type == 'H':
+        elif data_symbol == 'H':
             image_data = [i>>8 for i in image_data]
-        elif data_type == 'h':
+        elif data_symbol == 'h':
             image_data = [(i+32768)>>8 for i in image_data]
-        elif data_type == 'i':
+        elif data_symbol == 'i':
             image_data = [(i+2147483648)>>24 for i in image_data]
-        elif data_type in ('f','d'):
+        elif data_symbol in ('f','d'):
             # A float image is discretized in 256 bins for display.
             max_image_data = max(image_data)
             min_image_data = min(image_data)

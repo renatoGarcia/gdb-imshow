@@ -47,6 +47,9 @@ int main(int argc, char *argv[])
     Mat matImg = imread("gogh.jpg");
     Mat matRoi(matImg, Rect(50, 50, 100, 100));
 
+    // Will fail to show
+    Mat mat8UC2(13, 13, CV_8UC2);
+
     //--------------------------------------------------------------------------
     IplImage *ipl8UC1  = cvCreateImage(cvSize(250, 250), IPL_DEPTH_8U,  1); cvSet(ipl8UC1,  cvScalar(0));
     IplImage *ipl8SC1  = cvCreateImage(cvSize(250, 250), IPL_DEPTH_8S,  1); cvSet(ipl8SC1,  cvScalar(0));
@@ -87,6 +90,9 @@ int main(int argc, char *argv[])
     IplImage *iplRoi = cvLoadImage("gogh.jpg");
     cvSetImageROI(iplRoi, cvRect(50, 50, 100, 100));
 
+    // Will fail to show
+    IplImage *ipl8UC2 = cvCreateImage(cvSize(13, 13), IPL_DEPTH_8U, 2);
+
     cvReleaseImage(&ipl8UC1);
     cvReleaseImage(&ipl8SC1);
     cvReleaseImage(&ipl16UC1);
@@ -103,6 +109,7 @@ int main(int argc, char *argv[])
     cvReleaseImage(&ipl64FC3);
     cvReleaseImage(&iplImg);
     cvReleaseImage(&iplRoi);
+    cvReleaseImage(&ipl8UC2);
 
     return 0;
 }
